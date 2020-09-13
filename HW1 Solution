@@ -1,0 +1,19 @@
+(* Question 1 *)
+(* TODO: Write your own tests for the fact function.
+         See the provided tests for double, above, for how to write test cases.
+         Remember that you should NOT test cases for n < 0.
+*)
+(* TODO: Correct these tests for the fact function. *)
+let fact_tests = [
+  (0, 1.);
+  (1, 1.);
+  (2, 2.);
+  (5, 120.)
+]
+
+(* TODO: Correct this implementation so that it compiles and returns
+         the correct answers.
+*) 
+let rec fact (n: int): float = match n with
+  | 0 -> 1.0
+  | _ -> float n *. fact (n - 1)
