@@ -8,7 +8,8 @@ let fact_tests = [
   (0, 1.);
   (1, 1.);
   (2, 2.);
-  (5, 120.)
+  (5, 120.);
+  (8, 40320)
 ]
 
 (* TODO: Correct this implementation so that it compiles and returns
@@ -17,3 +18,28 @@ let fact_tests = [
 let rec fact (n: int): float = match n with
   | 0 -> 1.0
   | _ -> float n *. fact (n - 1)
+
+
+(* TODO: Write your own tests for the binomial function.
+         See the provided tests for fact, above, for how to write test cases.
+         Remember that we assume that  n >= k >= 0; you should not write test cases where this assumption is violated.
+*)
+let binomial_tests = [
+  (* Your test cases go here. Correct the incorrect test cases for the function. *)
+  ((0, 0), 1.);
+  ((1, 0), 1.);
+  ((2, 0), 1.);
+  ((5, 2), 10.);
+  ((5, 5), 1.);
+  ((10,1), 10.);
+  ((10,2), 45.);
+  ((12, 4), 495.)
+]
+
+(* TODO: Correct this implementation so that it compiles and returns
+         the correct answers.
+*)
+let binomial (n: int) (k:int) =
+  if n < 0 then domain ()
+  else (if k = n then 1.
+        else fact n /. (fact k  *. fact (n-k)))
