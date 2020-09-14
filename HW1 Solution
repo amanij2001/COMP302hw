@@ -89,10 +89,8 @@ let is_prime_tests = [
 (* TODO: Correct this implementation so that it compiles and returns
          the correct answers.
 *)
-let is_prime n =
-  (*raise NotImplemented*)
-  if n < 2 then domain()
-      (*else if n = 2 then true*)
+let is_prime n = 
+  if n < 2 then domain() 
   else (let rec check x =
           if x = 1 then true
           else if (n mod x = 0) then false
@@ -117,8 +115,7 @@ let square_root_tests = [
 let update a x = ((a/.x)+.x)/.2.
                
 let square_root a = 
-  let rec findroot x acc =
-    (*let x' = ((a/.x)+.x)/.2.*) 
+  let rec findroot x acc = 
     if (abs_float (x -. update a x) < acc) then update a x
     else findroot (update a x) epsilon_float 
   in
