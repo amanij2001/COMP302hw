@@ -49,12 +49,9 @@ let rec makeSubList (r: nucleobase list) (a: int) (n: nucleobase)=
 
 (* TODO: Implement decompress. *)
 let rec decompress (l : (int * nucleobase) list) : nucleobase list =
-  raise NotImplemented
-  (*let rec add (r: nucleobase list) (amount:int) (nucleo: nucleobase) =*)
-    
-    
-    (*let rec makeSubList (amount: int) (nucleo: nucleobase)=*)
-      
+  match l with
+  | [] -> []
+  | (i, n)::t -> (makeSubList [] i n) @ (decompress t)
       
 
 
