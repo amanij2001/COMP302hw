@@ -1,0 +1,96 @@
+(* Reminder: If a test case requires multiple arguments, use a tuple:
+let myfn_with_2_args_tests = [
+  ((arg1, arg1), (expected_output))
+]
+*)
+
+(* Q1 *)
+(* TODO: Write a good set of tests for compress *)
+let compress_tests = [
+  (([]), ([]));
+  (([A]), ([(1, A)]));
+  (([A;A]), ([(2, A)]));
+  (([A;T]), ([(1, A); (1, T)]));
+  (([A;A;G;T;T;C]), ([(2, A); (1, G); (2, T); (1, C)]));
+  (([A;A;A;A;G;G;A;T;T;T;C;C]), ([(4, A); (2, G); (1, A); (3, T); (2, C)]));
+]
+
+(* TODO: Implement compress. *)
+let compress (l : nucleobase list) : (int * nucleobase) list =
+  let rec compress' l (r: (int*nucleobase) list) acc=
+    match l with
+    | [] -> []
+    | [h] -> r @ [(acc, h)]
+    | (h1::h2::t) ->
+        if (h1 = h2) then compress' (h2::t) r (acc+1)
+        else compress' (h2::t) (r @ [(acc,h1)]) 1
+  in
+  compress' l [] 1
+
+(* TODO: Write a good set of tests for decompress *)
+let decompress_tests = [
+  (([]), ([]));
+  (([1, A]), ([A]));
+  (([2,C]), ([C;C])); 
+  (([5,T]), ([T;T;T;T;T]));
+  (([(1,A); (1,T)]), ([A;T]));
+  (([(1, A); (1, T)]), ([A;T]));
+  (([(1, A); (1, T)]), ([A;T])); 
+  (([(2, G); (1, A)]), ([G;G;A]));
+  (([(4, T); (2, G)]), ([T;T;T;T;G;G]));
+  (([(3, A); (3, T); (1, G); (2, C)]), ([A;A;A;T;T;T;G;C;C]));
+  (([(4, A); (2, G); (1, A); (3, T); (1, C); (1, T); (1, C)]),
+   ([A;A;A;A;G;G;A;T;T;T;C;T;C]))
+]
+
+let rec makeSubList (r: nucleobase list) (a: int) (n: nucleobase)=
+  if (a=0) then r
+  else makeSubList (n::r) (a-1) n
+
+(* TODO: Implement decompress. *)
+let rec decompress (l : (int * nucleobase) list) : nucleobase list =
+  raise NotImplemented
+  (*let rec add (r: nucleobase list) (amount:int) (nucleo: nucleobase) =*)
+    
+    
+    (*let rec makeSubList (amount: int) (nucleo: nucleobase)=*)
+      
+      
+
+
+(* Q2 *)
+(* TODO: Write a good set of tests for eval *)
+let eval_tests = [
+
+]
+
+(* TODO: Implement eval. *)
+let rec eval e =
+  raise NotImplemented
+
+(* TODO: Write a good set of tests for to_instr *)
+let to_instr_tests = [
+]
+
+(* TODO: Implement to_instr. *)
+let rec to_instr e = 
+  raise NotImplemented
+
+
+(* TODO: Write a good set of tests for instr *)
+let instr_tests = [
+]
+
+
+(* TODO: Implement to_instr. *)               
+let instr i s = 
+  raise NotImplemented
+
+
+(* TODO: Write a good set of tests for prog *)
+let prog_tests = [
+]
+
+(* TODO: Implement prog. *)
+let prog instrs = 
+  raise NotImplemented 
