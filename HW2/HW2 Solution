@@ -56,18 +56,9 @@ let rec decompress (l : (int * nucleobase) list) : nucleobase list =
 
 
 (* Q2 *)
-(* TODO: Write a good set of tests for eval *)
-
-                   (*type exp_tree = 
-                      | Empty 
-                      | Node1 of exp
-                      | Node2 of exp * exp_tree
-                      | Node3 of exp * exp_tree * exp_tree *)
-            
-let eval_tests = [
-  (*((Empty), (0.));*)
-  ((FLOAT 0.), (0.));
-  ((FLOAT 1.2), (1.2));
+(* TODO: Write a good set of tests for eval *) 
+let eval_tests = [ 
+  ((FLOAT 0.), (0.)); 
   ((FLOAT 342.768), (342.768));
   ((SIN (FLOAT 0.)), (0.));
   ((SIN (FLOAT 0.79)), (0.7103532724)); 
@@ -96,10 +87,10 @@ let eval_tests = [
 
 (* TODO: Implement eval. *)
 let rec eval e = match e with 
-  | FLOAT y -> y
-  | SIN y -> sin(eval y)
-  | COS y -> cos(eval y)
-  | EXP y -> exp(eval y)
+  | FLOAT x -> x
+  | SIN x -> sin(eval x)
+  | COS x -> cos(eval x)
+  | EXP x -> exp(eval x)
   | PLUS (x,y)-> ((eval x) +. (eval y))
   | MINUS (x,y) -> ((eval x) -. (eval y))
   | MULT (x,y) -> ((eval x) *. (eval y))
@@ -108,11 +99,45 @@ let rec eval e = match e with
 
 (* TODO: Write a good set of tests for to_instr *)
 let to_instr_tests = [
+  ((FLOAT 0.), ([Float 0.])); 
+  ((FLOAT 342.768), ([Float 342.768]));
+  ((SIN (FLOAT 0.)), ([Float 0.; Sin]));
+  ((SIN (FLOAT 0.79)), ([Float 0.79; Sin])); 
+  ((COS (FLOAT 0.)), ([Float 0.; Cos]));
+  ((COS (FLOAT 1.25)), ([Float 1.25; Cos])); 
+  ((EXP (FLOAT 0.)), ([Float 0.; Exp]));
+  ((EXP (FLOAT 0.6)), ([Float 0.6; Exp])); 
+  ((PLUS (FLOAT 3.4, FLOAT 0.)), ([Float 3.4; Float 0.; Plus]));
+  ((PLUS (FLOAT 0., FLOAT 5.6)), ([Float 0.; Float 5.6; Plus]));
+  ((PLUS (FLOAT 15.4, FLOAT 32.5)), ([Float 15.4; Float 32.5; Plus]));
+  ((MINUS (FLOAT 3.4, FLOAT 0.)), ([Float 3.4; Float 0.; Minus]));
+  ((MINUS (FLOAT 0., FLOAT 5.6)), ([Float 0.; Float 5.6; Minus]));
+  ((MINUS (FLOAT 15.4, FLOAT 32.5)), ([Float 15.4; Float 32.5; Minus]));
+  ((MULT (FLOAT 3.4, FLOAT 0.)), ([Float 3.4; Float 0.; Mult]));
+  ((MULT (FLOAT 0., FLOAT 5.6)), ([Float 0.; Float 5.6; Mult]));
+  ((MULT (FLOAT 15.4, FLOAT 32.5)), ([Float 15.4; Float 32.5; Mult]));
+  ((DIV (FLOAT 0., FLOAT 3.4)), ([Float 0.; Float 3.4; Div]));
+  ((DIV (FLOAT 5., FLOAT 2.)), ([Float 5.; Float 2.; Div]));
+  ((DIV (FLOAT 15.4, FLOAT 32.5)), ([Float 15.4; Float 32.5; Div]));
+  ((SIN(EXP(FLOAT 5.0))), ([Float 5.0; Exp; Sin]));
+  ((COS(MINUS(FLOAT 5.6, EXP(FLOAT 3.4)))), 
+   ([Float 5.6; Float 3.4; Exp; Minus; Cos]));
+  ((MULT (PLUS (FLOAT 2.2, FLOAT 3.3), FLOAT 5.0)), 
+   ([Float 2.2; Float 3.3; Plus; Float 5.0; Mult]));
+  ((DIV(FLOAT 34.5, (MINUS(FLOAT 15.4, (MULT (FLOAT 3.4, FLOAT 5.6)))))), 
+   ([Float 34.5; Float 15.4; Float 3.4; Float 5.6; Mult; Minus; Div]))
 ]
 
 (* TODO: Implement to_instr. *)
-let rec to_instr e = 
-  raise NotImplemented
+let rec to_instr e = match e with
+  | FLOAT x -> [Float x] 
+  | SIN x -> (to_instr x) @ [Sin]
+  | COS x -> (to_instr x) @ [Cos]
+  | EXP x -> (to_instr x) @ [Exp]
+  | PLUS (x,y) -> (to_instr x) @ (to_instr y) @ [Plus]
+  | MINUS (x,y) -> (to_instr x) @ (to_instr y) @ [Minus]
+  | MULT (x,y) -> (to_instr x) @ (to_instr y) @ [Mult]
+  | DIV (x,y) -> (to_instr x) @ (to_instr y) @ [Div]
 
 
 (* TODO: Write a good set of tests for instr *)
