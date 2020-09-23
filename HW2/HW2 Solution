@@ -142,18 +142,109 @@ let rec to_instr e = match e with
 
 (* TODO: Write a good set of tests for instr *)
 let instr_tests = [
+  ((Float 4.2, []), (Some [4.2]));
+  ((Float 4.2, [2.2; 3.3; 5.5]), (Some [4.2; 2.2; 3.3; 5.5]));
+  ((Sin, []), (None));
+  ((Sin, [1.1]), (Some [0.8912073601]));
+  ((Sin, [1.1; 5.5; 6.6]), (Some [0.8912073601; 5.5; 6.6]));
+  ((Cos, []), (None));
+  ((Cos, [1.1]), (Some [0.4535961214]));
+  ((Cos, [1.1; 5.5; 6.6; 98.]), (Some [0.4535961214; 5.5; 6.6; 98.]));
+  ((Exp, []), (None));
+  ((Exp, [4.2]), (Some [66.68633104]));
+  ((Exp, [4.2; 5.5]), (Some [66.68633104; 5.5]));
+  ((Plus, []), (None));
+  ((Plus, [5.5]), (None));
+  ((Plus, [5.5; 6.6; 4.2; 3.3]), (Some [12.1; 4.2; 3.3]));
+  ((Minus, []), (None));
+  ((Minus, [33.3]), (None));
+  ((Minus, [33.3; 4.2; 4.2; 6.6]), (Some [-29.1; 4.2; 6.6]));
+  ((Mult, []), (None));
+  ((Mult, [5.0]), (None));
+  ((Mult, [5.0; 5.5]), (Some [27.5]));
+  ((Div, []), (None));
+  ((Div, [5.]), (None));
+  ((Div, [5.; 55.5; 5.]), (Some [11.1; 5.]));
 ]
 
 
 (* TODO: Implement to_instr. *)               
-let instr i s = 
-  raise NotImplemented
-
+let instr i s = match i with
+  | Float x -> Some (x::s)
+  | Sin -> (match s with
+      | [] -> None
+      | x::t -> Some (sin x::t) )
+  | Cos -> (match s with
+      | [] -> None
+      | x::t -> Some (cos x::t) )
+  | Exp -> (match s with
+      | [] -> None
+      | x::t -> Some (exp x::t) ) 
+  | Plus -> (match s with
+      | [] -> None
+      | [x] -> None
+      | x::y::t -> Some ((y+.x)::t) ) 
+  | Minus -> (match s with
+      | [] -> None
+      | [x] -> None
+      | x::y::t -> Some ((y-.x)::t) ) 
+  | Mult -> (match s with
+      | [] -> None
+      | [x] -> None
+      | x::y::t -> Some ((y*.x)::t) ) 
+  | Div -> (match s with
+      | [] -> None
+      | [x] -> None
+      | x::y::t -> Some ((y/.x)::t)) 
+  
 
 (* TODO: Write a good set of tests for prog *)
 let prog_tests = [
+  (([Float 2.2]), (Some 2.2)); 
+  (([Sin]), (None));
+  (([Float 1.1; Sin]), (Some 0.8912073601));
+  (([Cos]), (None));
+  (([Float 1.1; Cos]), (Some 0.4535961214));
+  (([Exp]), (None));
+  (([Float 4.2; Exp]), (Some 66.68633104));
+  (([Plus]), (None));
+  (([Float 2.2; Plus]), (None));
+  (([Float 2.2; Float 3.3; Plus]), (Some 5.5));
+  (([Minus]), (None));
+  (([Float 2.2; Minus]), (None));
+  (([Float 2.2; Float 3.3; Minus]), (Some (-1.1)));
+  (([Mult]), (None));
+  (([Float 2.2; Mult]), (None));
+  (([Float 2.2; Float 3.3; Mult]), (Some 7.26));
+  (([Div]), (None));
+  (([Float 2.2; Div]), (None));
+  (([Float 2.2; Float 4.4; Div]), (Some 0.5));
+  (([Float 2.2; Float 3.3; Plus; Float 5.; Mult]), (Some 27.5)); 
 ]
 
-(* TODO: Implement prog. *)
-let prog instrs = 
-  raise NotImplemented 
+let rec prog_helper (il: instruction list) (fs: stack) = match il with
+  | [] -> (let x::[] = fs in x )
+  | Sin::tl -> (let x::xs = fs in prog_helper (tl) ((sin x)::xs) )
+  | Cos::tl -> (let x::xs = fs in prog_helper (tl) ((cos x)::xs) )
+  | Exp::tl -> (let x::xs = fs in prog_helper (tl) ((exp x)::xs) )
+  | Plus::tl -> (let x::y::xs = fs in prog_helper (tl) ((x+.y)::xs) )
+  | Minus::tl -> (let x::y::xs = fs in prog_helper (tl) ((x-.y)::xs) )
+  | Mult::tl -> (let x::y::xs = fs in prog_helper (tl) ((x*.y)::xs) )
+  | Div::tl -> (let x::y::xs = fs in prog_helper (tl) ((x/.y)::xs) )
+
+(* TODO: Implement prog. *) 
+let prog instrs =
+  let rec create_two_lists (list: instruction list) (il: instruction list) (fs: stack) =
+    match list with
+    | [] -> Some (prog_helper (il) (fs))
+    | (Float x)::t -> create_two_lists (t) (il) (fs @ [x])
+    | (Sin as x)::t | (Cos as x)::t | (Exp as x):: t 
+      -> if fs = [] then None
+        else create_two_lists (t) (il @ [x]) (fs)
+    | (Plus as x)::t | (Minus as x)::t | (Mult as x)::t | (Div as x)::t
+      ->  (match fs with
+          | [] -> None
+          | [y] -> None
+          | y::z::a -> create_two_lists (t) (il @ [x]) (fs))
+  in
+  create_two_lists instrs [] []
