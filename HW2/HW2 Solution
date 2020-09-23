@@ -219,7 +219,8 @@ let prog_tests = [
   (([Div]), (None));
   (([Float 2.2; Div]), (None));
   (([Float 2.2; Float 4.4; Div]), (Some 0.5));
-  (([Float 2.2; Float 3.3; Plus; Float 5.; Mult]), (Some 27.5)); 
+  (([Float 2.2; Float 3.3; Plus; Float 5.; Mult]), (Some 27.5));
+  (([Float 2.2; Exp; Float 4.5; Plus; Sin; Float 5.5; Mult]), (Some 4.501268651))
 ]
 
 let rec prog_helper (il: instruction list) (fs: stack) = match il with
