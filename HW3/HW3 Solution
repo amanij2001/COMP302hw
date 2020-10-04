@@ -36,11 +36,14 @@ let is_empty (matrix: 'a list list) : bool =
 
 (* TODO: Implement dist_matrix: int * int -> int list -> float list list *)
 let dist_matrix ((total, drawn): int * int) (resultList: int list) : float list list =
-  raise NotImplemented
+  List.map (dist_table (total, drawn)) resultList
 
 (* TODO: Implement combined_dist_table: float list list -> float list *)
 let rec combined_dist_table (matrix: float list list) =
-  raise NotImplemented
+  if is_empty matrix then []
+  else
+    List.fold_left (fun x1 x2 -> x1*.x2) (List.hd (List.map List.hd matrix)) 
+      (List.tl (List.map List.hd matrix))::combined_dist_table (List.map List.tl matrix)
 
 (* Once you have implemented all the above functions, you can
    use this function to compute the maximum likelihood.
