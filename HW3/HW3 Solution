@@ -57,21 +57,39 @@ let max_likelihood (total, drawn) resultList =
 
 
 (* TODO: Implement all: (ingredients list -> bool) -> cake -> bool *)
-let rec all (p: (ingredients list -> bool)) (c: cake) : bool = 
-  raise NotImplemented
+let rec all (p: (ingredients list -> bool)) (c: cake) : bool = match c with
+  | Slice s -> p s
+  | Cake (c1, c2) -> (all p c1) && (all p c2)
 
 (* TODO: Write some test cases for is_chocolate_cake. *)
 let is_chocolate_cake_tests = [
+  ((Slice []), false);
+  ((Slice [Flour; Orange; Almonds]), false);
+  ((Slice [Vanilla; Flour; Chocolate; BlackBeans]), true);
+  ((Cake(Slice [Flour; Vanilla] , Slice [Almonds])), false);
+  ((Cake (Slice [Chocolate; Almonds], Slice [Flour; Orange])), false);
+  ((Cake (Slice [BlackBeans; Chocolate; Flour], Slice [Chocolate; Vanilla])), true);
+  ((Cake (Cake(Slice [Almonds], Slice[Chocolate]) , 
+          Cake(Slice[Vanilla;Chocolate], Slice[Chocolate; Flour]))), false);
+  ((Cake (Cake(Slice [Almonds; Chocolate], Slice[Chocolate]) , 
+          Cake(Slice[Vanilla;Chocolate], Slice[Chocolate; Flour]))), true);
+  
 ]
 
 (* TODO: Implement is_chocolate_cake: cake -> bool *)
 let is_chocolate_cake (c: cake) : bool = 
-  raise NotImplemented
+  let rec check (i: ingredients) (l: ingredients list) = match l with
+    | [] -> false
+    | x::xs -> if (x = i) then true
+        else check i xs
+  in
+  all (check Chocolate) c
 
 
 (* TODO: Implement map: (ingredients list -> ingredients list) -> cake -> cake *)
-let rec map (p: (ingredients list -> ingredients list)) (c: cake) = 
-  raise NotImplemented  
+let rec map (p: (ingredients list -> ingredients list)) (c: cake) = match c with
+  | Slice s -> Slice (p s)
+  | Cake (c1, c2) -> Cake (map p c1, map p c2)
 
 (* TODO: Write some test cases for add_ingredient. *)
 let add_ingredient_tests = [
