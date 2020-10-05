@@ -42,7 +42,7 @@ let dist_matrix ((total, drawn): int * int) (resultList: int list) : float list 
 let rec combined_dist_table (matrix: float list list) =
   if is_empty matrix then []
   else
-    List.fold_left (fun x1 x2 -> x1*.x2) (List.hd (List.map List.hd matrix)) 
+    List.fold_left (fun x1-> fun x2 -> x1*.x2) (List.hd (List.map List.hd matrix)) 
       (List.tl (List.map List.hd matrix))::combined_dist_table (List.map List.tl matrix)
 
 (* Once you have implemented all the above functions, you can
@@ -80,8 +80,7 @@ let is_chocolate_cake_tests = [
 let is_chocolate_cake (c: cake) : bool = 
   let rec check (i: ingredients) (l: ingredients list) = match l with
     | [] -> false
-    | x::xs -> if (x = i) then true
-        else check i xs
+    | x::xs -> (x = i) || (check i xs)
   in
   all (check Chocolate) c
 
@@ -93,17 +92,30 @@ let rec map (p: (ingredients list -> ingredients list)) (c: cake) = match c with
 
 (* TODO: Write some test cases for add_ingredient. *)
 let add_ingredient_tests = [
+  ((Chocolate, (Slice [])), Slice [Chocolate]);
+  ((Chocolate, (Slice [Orange; Almonds])), Slice [Orange; Almonds; Chocolate]);
+  ((Chocolate, (Slice [Chocolate; Almonds; Vanilla])), Slice [Chocolate; Almonds; Vanilla]);
+  ((Chocolate, (Cake (Slice [Almonds], Slice [Vanilla; Flour]))), 
+   Cake (Slice [Almonds; Chocolate], Slice [Vanilla; Flour; Chocolate]));
+  ((Chocolate, (Cake (Slice [Chocolate], Slice [Chocolate; Vanilla; Flour]))), 
+   Cake (Slice [Chocolate], Slice [Chocolate; Vanilla; Flour]));
 ]
 
 (* TODO: Implement add_ingredient: ingredients -> cake -> cake *)
 let add_ingredient (x: ingredients) (c: cake) : cake = 
-  raise NotImplemented    
+  map (insert x) c 
 
 (* TODO: Implement fold_cake: (ingredients list -> 'a -> 'a) -> 'a -> cake -> 'a  *)
 let rec fold_cake (f: (ingredients list -> 'a -> 'a)) (base: 'a) (c: cake) : 'a = 
-  raise NotImplemented    
+  match c with
+  | Slice s -> f s base
+  | Cake (c1, c2) -> fold_cake f (fold_cake f base c1) c2
 
 
 (* TODO: Implement get_all_ingredients: cake -> ingredients list *)
 let get_all_ingredients (c: cake) : ingredients list = 
-  raise NotImplemented
+  let rec get_first (c:cake) = match c with 
+    | Slice s-> s
+    | Cake (c1, c2) -> get_first c1
+  in
+  fold_cake union (get_first c) c
