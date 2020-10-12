@@ -56,7 +56,14 @@ let new_account (p: passwd) : bank_account =
 (* Q 2.1 : Counting how many function calls are made *)
 
 let rec fib_I (n: int) : fib_result =
-  raise NotImplemented
+  let counter_rec = ref 0 in 
+  if n = 0 then (counter_rec := !counter_rec + 1;
+                 {num_rec = !counter_rec; result = 0})
+  else (if n = 1 then (counter_rec := !counter_rec + 1;
+                       {num_rec = !counter_rec; result = 1})
+        else (counter_rec := !counter_rec + 1;
+              {num_rec = !counter_rec + (fib_I (n-2)).num_rec + (fib_I (n-1)).num_rec;
+               result = (fib_I (n-2)).result + (fib_I (n-1)).result}))
 ;;
 
 
