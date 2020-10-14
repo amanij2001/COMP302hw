@@ -70,9 +70,13 @@ let rec fib_I (n: int) : fib_result =
 (* Q 2.2 : Memoization with a global store *)
 
 let fib_memo (n: int) : int =
-  let rec fib n =
-    raise NotImplemented
+  let rec fib n = match (Hashtbl.find_opt store n) with
+    | Some v -> v
+    | None -> (Hashtbl.add store n (fib (n-2) + fib (n-1));
+               (fib (n-2) + fib (n-1))) 
   in
+  Hashtbl.add store 0 0;
+  Hashtbl.add store 1 1;
   fib n
 ;;
 
