@@ -87,10 +87,10 @@ let memo (f: (('a -> 'b) -> 'a -> 'b)) (stats: stats) : ('a -> 'b) =
   let store : ('a, 'b) Hashtbl.t = Hashtbl.create 1000 in 
   fun (a:'a) -> 
     let rec f_memo (a: 'a) : 'b = match (Hashtbl.find_opt store a) with 
-      | None -> (stats.entries := !(stats.entries) + 1;
-                 let v = f f_memo a in 
-                 Hashtbl.add store a v)
       | Some v -> (stats.lkp := !(stats.lkp) + 1; v)
+      | None -> (stats.entries := !(stats.entries) + 1;
+                 let v = f (f_memo) a in 
+                 Hashtbl.add store a v; v)
     in f_memo a
 ;;
 
