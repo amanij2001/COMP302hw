@@ -1,5 +1,5 @@
 (* TODO: Write some tests for neighbours. Consider creating a graph first,
- and then writing your tests based on it *)
+and then writing your tests based on it *)
 
 (* Reminder: If a test case requires multiple arguments, use a tuple:
 let myfn_with_2_args_tests = [
@@ -34,13 +34,14 @@ let neighbours (g: 'a graph) (vertex: 'a) : ('a * weight) list =
 
 (* TODO: Implement find_path. *)
 let find_path (g: 'a graph) (a: 'a) (b: 'a) : ('a list * weight) =
-  let rec aux_node (node: 'a) (visited: 'a list):('a list) =
-    raise NotImplemented
-  and aux_list nodes visited =
+  let rec aux_node (node: 'a) visited: 'a list =
+    if (List.exists (fun s->s=node) visited) then []
+    else visited@[node]
+  and aux_list (nodes:'a list) visited =
     raise NotImplemented 
   in
-  let try_path = ref [] in
-  let try_weight = ref 0 in
+  (*let try_path = ref [] in
+   let try_weight = ref 0 in*)
   let m = g.edges in
   let rec find_inner_path (edges: ('a*'a*weight) list) (a': 'a) : ('a list * weight) =
     match edges with
