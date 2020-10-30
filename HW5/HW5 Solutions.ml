@@ -83,6 +83,20 @@ let g1 = {nodes = ["a"; "b"; "c"; "d"; "e"];
 (* TODO: Implement find_all_paths *) 
 let find_all_paths (g: 'a graph) (a: 'a) (b: 'a) : ('a list * weight) list =
   let check node visited = List.exists (fun s->s=node) visited in 
+  let aux_node edge paths = 
+    let (a, w) = edge in List.map (fun (list, v) -> (a::list), w+v) paths 
+  in
+  let m = g.edges in 
+  let rec find_all' edges a_inner prev paths: ('a list * weight) list =
+    match edges with
+    | [] -> paths
+    | (v1, v2, w)::xs -> if v1 = a_inner then 
+          if v2 = b then find_all' xs a_inner [a_inner] ([([v1;v2], w)]@paths)
+          else if (check v2 prev) then paths
+          else (aux_node (v1, w) (find_all' m v2 (a_inner::prev) []))@(find_all' xs a_inner [a_inner] []) 
+        else find_all' xs a_inner prev paths
+  in find_all' m a [] [];;
+  (*let check node visited = List.exists (fun s->s=node) visited in 
   let m = g.edges in 
   let rec find_one edges a_inner visited weight_acc: ('a list * weight) =
     match edges with
@@ -105,14 +119,14 @@ let find_all_paths (g: 'a graph) (a: 'a) (b: 'a) : ('a list * weight) list =
                      (find_set xs a_inner weight_acc (next::paths)))) with 
             Fail -> []
         else find_set xs a_inner weight_acc paths 
-  and find_all' edges : ('a list * weight) list =
+  in let rec  find_all' edges : ('a list * weight) list =
     match edges with
     | [] -> []
     | (v1, v2, w)::xs -> if v1 = a then 
           if v2 = b then [([v1;v2], w)]@(find_all' xs)
           else (find_set m v2 w [])@(find_all' xs)
         else find_all' xs 
-  in find_all' m ;;
+  in find_all' m ;;*)
 
 
 (* TODO: Implement find_shortest_path *)
