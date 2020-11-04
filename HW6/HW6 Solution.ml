@@ -41,10 +41,32 @@ let parse string =
 (* eval : string -> int *)
 let eval e = eval' (parse e)
 
-    (*(* ---------- Hamming Numbers ----------- *)
+    (* ---------- Hamming Numbers ----------- *)
 
-      let rec merge (s1: 'a str) (s2: 'a str) : 'a str = 
-        raise NotImplemented
+let rec take n s = match n with
+  | 0 -> []
+  | n-> s.hd :: take (n-1) (force s.tl);; 
 
-      let rec hamming_series = 
-        raise NotImplemented*)
+let rec merge (s1: 'a str) (s2: 'a str) : 'a str = 
+  let n = compare (s1.hd) (s2.hd) in
+  if n>0 then
+    {hd = s2.hd;
+     tl = Susp (fun () -> merge s1 (force s2.tl))}
+  else if n<0 then
+    {hd = s1.hd;
+     tl = Susp (fun () -> merge (force s1.tl) s2)}
+  else 
+    {hd = s1.hd;
+     tl = Susp (fun () -> merge (force s1.tl) (force s2.tl))};; 
+
+let rec hamming_series = 
+  let rec two =
+    {hd = 1; tl = Susp (fun () -> times 2 two)} in
+  let rec three =
+    {hd = 1; tl = Susp (fun () -> times 3 three)} in 
+  let rec five =
+    {hd = 1; tl = Susp (fun () -> times 5 five)} in
+  let mergeAllThree = merge five (merge two three) in
+  {hd = 1;
+   tl = Susp (fun () -> merge (times 2 mergeAllThree) 
+                 (merge (times 3 mergeAllThree) (times 5 mergeAllThree)))};;
