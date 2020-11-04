@@ -9,24 +9,24 @@ let rec parseExp (toklist: token list) (sc: (token list -> exp -> 'a)) : 'a =
 and parseSExp (toklist: token list) (sc: (token list -> exp -> 'a)) : 'a = 
   parsePExp 
     toklist 
-    (fun toklist' e -> match toklist' with
-       | PLUS::toklist'' | SUB::toklist'' -> (*parseSExp toklist'' sc*)
-           sc toklist'' e
-       | _ -> sc toklist' e)
+    (fun toklist' pExp -> match toklist' with
+       | PLUS::toklist'' -> parseSExp toklist'' (fun t -> fun s -> sc t (Sum(pExp, s)))
+       | SUB::toklist'' -> parseSExp toklist'' (fun t -> fun s-> sc t (Minus(pExp, s)))
+       | _ -> sc toklist' pExp)
 
 and parsePExp (toklist: token list) (sc: (token list -> exp -> 'a)) : 'a =
   parseAtom 
     toklist 
-    (fun toklist' e -> match toklist' with
-       | TIMES::toklist'' | DIV::toklist'' -> parsePExp toklist'' sc
-           (*sc toklist'' e*)
-       | _ -> sc toklist' e)
+    (fun toklist' aExp -> match toklist' with
+       | TIMES::toklist'' -> parsePExp toklist'' (fun t -> fun p -> sc t (Prod(aExp, p)))
+       | DIV::toklist'' -> parsePExp toklist'' (fun t -> fun p -> sc t (Div(aExp, p)))
+       | _ -> sc toklist' aExp)
 
 and parseAtom (toklist: token list) (sc: (token list -> exp -> 'a)) : 'a = 
   match toklist with
   | INT n :: ts -> sc ts (Int n)
-  | LPAREN :: ts -> parseSExp ts (fun toklist' e -> match toklist' with
-      | RPAREN :: toklist'' -> sc toklist'' e 
+  | LPAREN :: ts -> parseSExp ts (fun toklist' sExp -> match toklist' with
+      | RPAREN :: toklist'' -> sc toklist'' sExp
       | _ -> raise (Error "Expected a closing parenthesis at the end"))
   | _ -> raise (Error "Excpeted an integer or an S-expression surrounded by parenthesis")
 
