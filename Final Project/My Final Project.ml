@@ -10,8 +10,28 @@ let program_12 = (*the y in x=y is free, but other y's are bound*)
                   let val x = y in 
                   let val (y, z) = (2*3, 6*w) in
                   let name u = 8+9-e in
-  x + 1 + u-y+e+i
+  x + 1 + u - y + e + i
 end end end; " ;; 
+
+let program_13 = " 
+                  let name x = 3
+in
+  2 + 1 + z
+end; " ;;
+
+
+let program_14 = "let val x = y in 
+                  let val (y, z) = (2*3, 6*w) in
+                  let name u = 8+9-y in
+  x + 1 + u + e + i
+end end end; " ;;
+
+let program_15 = "let val x = y in 
+                  let name u = 8+9-y in
+                  let val o = 7 in
+  x + 1 + e + i
+end end end; " ;;
+
 
 (* Q0  : Get familiar with the external syntax of MiniML *)
 let parse_tests : (string * (string, exp) either) list = [
@@ -68,12 +88,14 @@ let rec free_vars (e : exp) : name list = match e with
       List.fold_right (fun e1 fv -> union (free_vars e1) fv) args []
   | Let (d, e2) -> (match d with 
       | [] -> []
-      | Val (e, x) :: [] | ByName (e, x)::[] -> union (free_vars e) (delete [x] (free_vars e2))
-      | Valtuple (e, xlist) :: [] -> union (free_vars e) (delete xlist (free_vars e2))
-      | Val (e, x)::ds | ByName (e, x)::ds -> union (free_vars e)
-                                                (delete [x] (free_vars (Let (ds, e2))))
-      | Valtuple (e, xlist)::ds -> union (free_vars e)
-                                     (delete xlist (free_vars (Let (ds, e2))) ) )
+      | Val (e, x) :: [] | ByName (e, x) :: [] -> 
+          union (free_vars e) (delete [x] (free_vars e2))
+      | Valtuple (e, xlist) :: [] -> 
+          union (free_vars e) (delete xlist (free_vars e2))
+      | Val (e, x)::ds | ByName (e, x)::ds -> 
+          union (free_vars e) (delete [x] (free_vars (Let (ds, e2))))
+      | Valtuple (e, xlist)::ds -> 
+          union (free_vars e) (delete xlist (free_vars (Let (ds, e2))) ) )
   | Apply (e1, e2) -> union (free_vars e1) (free_vars e2) 
   | Tuple exps -> List.fold_right (fun e1 fv -> union (free_vars e1) fv) exps []
   | Fn (n, t, e) -> delete [n] (free_vars e)
@@ -82,10 +104,82 @@ let rec free_vars (e : exp) : name list = match e with
                                      
 
 let unused_vars_tests : (exp * name list) list = [
+  ((Primop (Plus, [Primop (Times, [Int 10; Int 10]); Int 33])), []); (*2*)
+  ((Anno (If (Bool true, Int 3, Int 5), TInt)), []); (*4*)
+  ((Let ([ByName (Int 3, "x")],
+         Primop (Plus, [Primop (Plus, [Int 2; Int 1]); Var "z"]))), ["x"]); (*13*)
+  ((Let ([Val (Bool true, "x")],
+         Let ([Val (Int 1, "x")], Primop (Plus, [Var "x"; Int 5])))), ["x"]); (*6*)
+  ((Let ([Val (Int 1, "x")], Primop (Plus, [Var "x"; Int 5]))), []); (*5*)
+  ((Let
+      ([Valtuple
+          (Tuple [Primop (Plus, [Int 2; Int 1]); Primop (Times, [Int 2; Int 50])],
+           ["x"; "y"])],
+       Primop (Times, [Primop (Times, [Var "x"; Var "x"]); Var "y"]))), []); (*8*)
+  ((Let ([Val (Var "y", "x")],
+         Let
+           ([Valtuple
+               (Tuple
+                  [Primop (Times, [Int 2; Int 3]); Primop (Times, [Int 6; Var "w"])],
+                ["y"; "z"])],
+            Let
+              ([ByName (Primop (Minus, [Primop (Plus, [Int 8; Int 9]); Var "y"]), "u")],
+               Primop (Plus,
+                       [Primop (Plus,
+                                [Primop (Plus, [Primop (Plus, [Var "x" ; Int 1]); Var "u"]); Var "e"]);
+                        Var "i"]))))), []); (*14*)
+  ((Let ([Val (Var "y", "x")],
+         Let
+           ([ByName (Primop (Minus, [Primop (Plus, [Int 8; Int 9]); Var "y"]), "u")],
+            Let ([Val (Int 7, "o")],
+                 Primop (Plus,
+                         [Primop (Plus, 
+                                  [Primop (Plus, [Var "x"; Int 1]); 
+                                   Var "e"]); Var "i"]))))), ["u"; "o"]); (*15*)
 ]
 
 (* Q2  : Check variables are in use *)
-let rec unused_vars (e : exp) : name list = raise NotImplemented
+let rec unused_vars (e : exp) : name list = match e with
+  | Var y -> []
+  | Int n -> []
+  | Bool b -> []
+  | If (e, e1, e2) -> [] 
+  | Primop (po, args) -> [] 
+  | Let (d, e2) -> (match d with 
+      | [] -> []
+                (*| Val (e, x) :: [] | ByName (e, x)::[] -> 
+                   if member x (free_vars e2) then []
+                   else [x]
+                 | Valtuple (e, xlist) :: [] -> 
+                   List.flatten (List.map (fun xi ->
+                       if member xi (free_vars e2) then []
+                       else [xi]) xlist) *)
+      | Val (e, x):: ds | ByName (e, x)::ds -> 
+          if member x (
+              union (List.flatten (List.map (fun d -> 
+                  let Val (e,_) | ByName (e,_) | Valtuple (e,_) = d in
+                  free_vars e )
+                  ds ) ) (free_vars e2) ) 
+          then unused_vars (Let (ds, e2))
+          else x::(unused_vars (Let (ds, e2)))
+      | Valtuple (e, xlist)::ds -> 
+          (List.flatten (List.map (fun xi ->
+               if member xi (
+                   union (List.flatten (List.map (fun d -> 
+                       let Val (e,_) | ByName (e,_) | Valtuple (e,_) = d in
+                       free_vars e
+                     ) ds ) ) (free_vars e2) ) 
+               then []
+               else [xi]) xlist))@(unused_vars (Let (ds, e2))) )  
+  | Apply (e1, e2) -> []
+  | Tuple exps -> []
+  | Fn (n, t, e) -> 
+      if member n (free_vars e) then []
+      else [n]
+  | Rec (n, t, e) -> 
+      if member n (free_vars e) then []
+      else [n]
+  | Anno (e, t) -> []
 
 
 let subst_tests : (((exp * name) * exp) * exp) list = [
