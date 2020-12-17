@@ -6,8 +6,8 @@ let program_11 =
 let program_12 = (*the y in x=y is free, but other y's are bound*)
   " let val x = y in 
    let val (y, z) = (2*3, 6*w) in 
-   let name u = 8+9-e in 
-    x + 1 + u - y + e + i
+   let name u = 8+9-w in 
+    x + 1 + w - y + z + i
 end end end; " ;; 
 
 let program_13 = 
@@ -244,36 +244,27 @@ let subst_tests : (((exp * name) * exp) * exp) list = [
          (Tuple [Primop (Plus, [Int 2; Int 1]); Primop (Times, [Int 2; Int 50])],
           ["x"; "1y"])],
       Primop (Times, [Primop (Times, [Var "x"; Primop (Plus, [Var "y"; Int 3])]); Var "1y"]))); (*8*)
-  (((Int 3, "y"), Let ([Val (Var "y", "x")],
-                       Let
-                         ([Valtuple
-                             (Tuple
-                                [Primop (Times, [Int 2; Int 3]); Primop (Times, [Int 6; Var "w"])],
-                              ["y"; "z"])],
-                          Let
-                            ([ByName (Primop (Minus, [Primop (Plus, [Int 8; Int 9]); Var "e"]), "u")],
-                             Primop (Plus,
-                                     [Primop (Plus,
-                                              [Primop (Minus,
-                                                       [Primop (Plus, [Primop (Plus, [Var "x"; Int 1]); Var "u"]);
-                                                        Var "y"]);
-                                               Var "e"]);
-                                      Var "i"]))))), 
-   Let ([Val (Int 3, "x")],
-        Let
-          ([Valtuple
-              (Tuple
-                 [Primop (Times, [Int 2; Int 3]); Primop (Times, [Int 6; Var "w"])],
-               ["y"; "z"])],
-           Let
-             ([ByName (Primop (Minus, [Primop (Plus, [Int 8; Int 9]); Var "e"]), "u")],
-              Primop (Plus,
-                      [Primop (Plus,
-                               [Primop (Minus,
-                                        [Primop (Plus, [Primop (Plus, [Var "x"; Int 1]); Var "u"]);
-                                         Var "y"]);
-                                Var "e"]);
-                       Var "i"]))))); (*12*)
+  (((Var "z", "w"),  
+    Let ([Val (Var "y", "x"); 
+          Valtuple (Tuple [Primop (Times, [Int 2; Int 3]); Primop (Times, [Int 6; Var "w"])],["y"; "z"]);
+          ByName (Primop (Minus, [Primop (Plus, [Int 8; Int 9]); Var "w"]), "u")],
+         Primop (Plus,
+                 [Primop (Plus,
+                          [Primop (Minus,
+                                   [Primop (Plus, [Primop (Plus, [Var "x"; Int 1]); Var "w"]);
+                                    Var "y"]);
+                           Var "z"]);
+                  Var "i"]))), 
+   Let ([Val (Var "y", "x"); 
+         Valtuple (Tuple [Primop (Times, [Int 2; Int 3]); Primop (Times, [Int 6; Var "z"])],["y"; "1z"]);
+         ByName (Primop (Minus, [Primop (Plus, [Int 8; Int 9]); Var "z"]), "u")],
+        Primop (Plus,
+                [Primop (Plus,
+                         [Primop (Minus,
+                                  [Primop (Plus, [Primop (Plus, [Var "x"; Int 1]); Var "z"]);
+                                   Var "y"]);
+                          Var "1z"]);
+                 Var "i"]))); (*12*)                                                                                         
   (((Primop (Plus, [Var "y"; Int 1]), "x"), 
     Apply
       (Fn
@@ -345,7 +336,7 @@ let rec subst ((e', x) : exp * name) (e : exp) : exp = match e with
   
         | Val (e1, y)::ds ->
             if y=x then 
-              buildValid [] (vList@[Val (subst (e', x) e1, y)]) ve2
+              buildValid [] (vList@[Val (subst (e', x) e1, y)]@ds) ve2
             else if (member y (free_vars e')) then
               let new_var = fresh_var y in 
               let (Let (newVarInRem, newVarInE2)) = subst (Var new_var, y) (Let (ds, e2)) in
@@ -354,7 +345,7 @@ let rec subst ((e', x) : exp * name) (e : exp) : exp = match e with
               
         | ByName (e1, y)::ds ->
             if y=x then 
-              buildValid [] (vList@[ByName (subst (e', x) e1, y)]) ve2
+              buildValid [] (vList@[ByName (subst (e', x) e1, y)]@ds) ve2
             else if (member y (free_vars e')) then
               let new_var = fresh_var y in 
               let (Let (newVarInRem, newVarInE2)) = subst (Var new_var, y) (Let (ds, e2)) in
@@ -364,7 +355,7 @@ let rec subst ((e', x) : exp * name) (e : exp) : exp = match e with
         | Valtuple (e1, ylist)::ds ->
             let check = List.exists (fun y -> y=x) ylist in
             if check then
-              buildValid [] (vList@[Valtuple (subst (e', x) e1, ylist)]) ve2
+              buildValid [] (vList@[Valtuple (subst (e', x) e1, ylist)]@ds) ve2
             else
               let fv = List.filter (fun y -> (member y (free_vars e'))) ylist in 
               let rec replace free (repNList, repRemaining) : (name list * exp) = match free with
