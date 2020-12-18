@@ -38,6 +38,10 @@ let program_17 =
 let program_18 =
   "(5=4)||(3+3=7)||(5+5);";;
 
+let program_19 =
+  "let in x+y+3 end;";;
+
+
 (* Q0  : Get familiar with the external syntax of MiniML *)
 let parse_tests : (string * (string, exp) either) list = [
     (* Provide your tests for the parser *)
@@ -238,8 +242,10 @@ let subst_tests : (((exp * name) * exp) * exp) list = [
       Apply
         (Apply (Var "apply", Fn ("x", None, Primop (Times, [Var "x"; Int 3]))),
          Int 100))); (*1*)
+                     
   (((Int 5, "y"), Let ([Val (Int 1, "x")], Primop (Plus, [Var "y"; Int 5]))), 
    Let ([Val (Int 1, "x")], Primop (Plus, [Int 5; Int 5]))); (*5*)
+                                                             
   (((Primop (Plus, [Var "y"; Int 3]), "z"), Let
       ([Valtuple
           (Tuple [Primop (Plus, [Int 2; Int 1]); Primop (Times, [Int 2; Int 50])],
@@ -250,6 +256,7 @@ let subst_tests : (((exp * name) * exp) * exp) list = [
          (Tuple [Primop (Plus, [Int 2; Int 1]); Primop (Times, [Int 2; Int 50])],
           ["x"; "1y"])],
       Primop (Times, [Primop (Times, [Var "x"; Primop (Plus, [Var "y"; Int 3])]); Var "1y"]))); (*8*)
+                                                                                                
   (((Var "z", "w"),  
     Let ([Val (Var "y", "x"); 
           Valtuple (Tuple [Primop (Times, [Int 2; Int 3]); Primop (Times, [Int 6; Var "w"])],["y"; "z"]);
@@ -270,7 +277,8 @@ let subst_tests : (((exp * name) * exp) * exp) list = [
                                   [Primop (Plus, [Primop (Plus, [Var "x"; Int 1]); Var "z"]);
                                    Var "y"]);
                           Var "1z"]);
-                 Var "i"]))); (*12*)                                                                                         
+                 Var "i"]))); (*12*)    
+                              
   (((Primop (Plus, [Var "y"; Int 1]), "x"), 
     Apply
       (Fn
@@ -280,6 +288,10 @@ let subst_tests : (((exp * name) * exp) * exp) list = [
      (Fn
         ("1y", None, Primop (Plus, [Var "1y"; Primop (Times, [Primop (Plus, [Var "y"; Int 1]); Int 2])])),
       Primop (Plus, [Var "y"; Int 1]))); (*16*)
+                                         
+  (((Int 5, "x"), 
+    Let ([], Primop (Plus, [Primop (Plus, [Var "x"; Var "y"]); Int 3])) ), 
+   Let ([], Primop (Plus, [Primop (Plus, [Int 5; Var "y"]); Int 3]))); 
 ]
 
 (* Q3  : Substitute a variable *)
@@ -297,88 +309,88 @@ let rec subst ((e', x) : exp * name) (e : exp) : exp = match e with
   | Anno (e, t) -> Anno (subst (e', x) e, t)
 
   | Let (d, e2) -> (
-      let rec buildValid gList vList ve2 : (dec list * exp) = match gList with
-        | [] -> (vList, ve2)
+      if d = [] then Let ([], subst (e', x) e2) else
+        let rec buildValid gList vList ve2 : (dec list * exp) = match gList with
+          | [] -> (vList, ve2)
 (*If last/only one & y!=x, then we know we can subst x into e2 safely*)
-        | Val (e1, y)::[] ->
-            if y=x then 
-              buildValid [] (vList@[Val (subst (e', x) e1, y)]) ve2
-            else if (member y (free_vars e')) then
-              let new_var = fresh_var y in
+          | Val (e1, y)::[] ->
+              if y=x then 
+                buildValid [] (vList@[Val (subst (e', x) e1, y)]) ve2
+              else if (member y (free_vars e')) then
+                let new_var = fresh_var y in
               (*subst into ve2; subst (e', x) ve2*)
               (*let vewVayRemaining = subst (Var new_var, y) Let (ds, ve2) in*)
-              let newVarInE2 = subst (Var new_var, y) ve2 in
-              buildValid [] (vList@[Val (subst (e', x) e1, new_var)])
-                (subst (e', x) newVarInE2)
-            else buildValid [] (vList@[Val (subst (e', x) e1, y)]) (subst (e', x) ve2)
+                let newVarInE2 = subst (Var new_var, y) ve2 in
+                buildValid [] (vList@[Val (subst (e', x) e1, new_var)])
+                  (subst (e', x) newVarInE2)
+              else buildValid [] (vList@[Val (subst (e', x) e1, y)]) (subst (e', x) ve2)
                   
-        | ByName (e1, y)::[] ->
-            if y=x then 
-              buildValid [] (vList@[ByName (subst (e', x) e1, y)]) ve2
-            else if (member y (free_vars e')) then
-              let new_var = fresh_var y in 
-              let newVarInE2 = subst (Var new_var, y) ve2 in
-              buildValid [] (vList@[ByName (subst (e', x) e1, new_var)]) 
-                (subst (e', x) newVarInE2)
-            else buildValid [] (vList@[ByName (subst (e', x) e1, y)]) (subst (e', x) ve2)
+          | ByName (e1, y)::[] ->
+              if y=x then 
+                buildValid [] (vList@[ByName (subst (e', x) e1, y)]) ve2
+              else if (member y (free_vars e')) then
+                let new_var = fresh_var y in 
+                let newVarInE2 = subst (Var new_var, y) ve2 in
+                buildValid [] (vList@[ByName (subst (e', x) e1, new_var)]) 
+                  (subst (e', x) newVarInE2)
+              else buildValid [] (vList@[ByName (subst (e', x) e1, y)]) (subst (e', x) ve2)
                    
-        | Valtuple (e1, ylist)::[] -> 
-            let check = List.exists (fun y -> y=x) ylist in
-            if check then
-              buildValid [] (vList@[Valtuple (subst (e', x) e1, ylist)]) ve2
-            else
-              let fv = List.filter (fun y -> (member y (free_vars e'))) ylist in 
-              let rec replace free (repNList, repE2) : (name list * exp) = match free with
-                | [] -> (repNList, repE2)
-                | x::xs -> 
-                    let new_var = fresh_var x in
-                    let newNameList = 
-                      List.map (fun n -> if n=x then new_var else n) repNList in
-                    replace xs (newNameList, (subst (Var new_var, x) repE2))
-              in
-              let (repNames, repE2) = replace fv (ylist, e2) in
-              buildValid [] (vList@[Valtuple (subst (e', x) e1, repNames)]) 
-                (subst (e', x) repE2)
+          | Valtuple (e1, ylist)::[] -> 
+              let check = List.exists (fun y -> y=x) ylist in
+              if check then
+                buildValid [] (vList@[Valtuple (subst (e', x) e1, ylist)]) ve2
+              else
+                let fv = List.filter (fun y -> (member y (free_vars e'))) ylist in 
+                let rec replace free (repNList, repE2) : (name list * exp) = match free with
+                  | [] -> (repNList, repE2)
+                  | x::xs -> 
+                      let new_var = fresh_var x in
+                      let newNameList = 
+                        List.map (fun n -> if n=x then new_var else n) repNList in
+                      replace xs (newNameList, (subst (Var new_var, x) repE2))
+                in
+                let (repNames, repE2) = replace fv (ylist, e2) in
+                buildValid [] (vList@[Valtuple (subst (e', x) e1, repNames)]) 
+                  (subst (e', x) repE2)
   
-        | Val (e1, y)::ds ->
-            if y=x then 
-              buildValid [] (vList@[Val (subst (e', x) e1, y)]@ds) ve2
-            else if (member y (free_vars e')) then
-              let new_var = fresh_var y in 
-              let (Let (newVarInRem, newVarInE2)) = subst (Var new_var, y) (Let (ds, e2)) in
-              buildValid newVarInRem (vList@[Val (subst (e', x) e1, new_var)]) newVarInE2
-            else buildValid ds (vList@[Val (subst (e', x) e1, y)]) ve2
+          | Val (e1, y)::ds ->
+              if y=x then 
+                buildValid [] (vList@[Val (subst (e', x) e1, y)]@ds) ve2
+              else if (member y (free_vars e')) then
+                let new_var = fresh_var y in 
+                let (Let (newVarInRem, newVarInE2)) = subst (Var new_var, y) (Let (ds, e2)) in
+                buildValid newVarInRem (vList@[Val (subst (e', x) e1, new_var)]) newVarInE2
+              else buildValid ds (vList@[Val (subst (e', x) e1, y)]) ve2
               
-        | ByName (e1, y)::ds ->
-            if y=x then 
-              buildValid [] (vList@[ByName (subst (e', x) e1, y)]@ds) ve2
-            else if (member y (free_vars e')) then
-              let new_var = fresh_var y in 
-              let (Let (newVarInRem, newVarInE2)) = subst (Var new_var, y) (Let (ds, e2)) in
-              buildValid newVarInRem (vList@[ByName (subst (e', x) e1, new_var)]) newVarInE2
-            else buildValid ds (vList@[ByName (subst (e', x) e1, y)]) ve2
+          | ByName (e1, y)::ds ->
+              if y=x then 
+                buildValid [] (vList@[ByName (subst (e', x) e1, y)]@ds) ve2
+              else if (member y (free_vars e')) then
+                let new_var = fresh_var y in 
+                let (Let (newVarInRem, newVarInE2)) = subst (Var new_var, y) (Let (ds, e2)) in
+                buildValid newVarInRem (vList@[ByName (subst (e', x) e1, new_var)]) newVarInE2
+              else buildValid ds (vList@[ByName (subst (e', x) e1, y)]) ve2
                    
-        | Valtuple (e1, ylist)::ds ->
-            let check = List.exists (fun y -> y=x) ylist in
-            if check then
-              buildValid [] (vList@[Valtuple (subst (e', x) e1, ylist)]@ds) ve2
-            else
-              let fv = List.filter (fun y -> (member y (free_vars e'))) ylist in 
-              let rec replace free (repNList, repRemaining) : (name list * exp) = match free with
-                | [] -> (repNList, repRemaining)
-                | x::xs -> 
-                    let new_var = fresh_var x in
-                    let newNameList = 
-                      List.map (fun n -> if n=x then new_var else n) repNList in
-                    let newRemaining = subst (Var new_var, x) repRemaining in
-                    replace xs (newNameList, newRemaining)
-              in
-              let (repNames, Let (repDecs, repE2)) = replace fv (ylist, Let(ds, e2)) in
-              buildValid repDecs (vList@[Valtuple (subst (e', x) e1, repNames)]) repE2
-      in 
-      let (list, exp2 ) = buildValid d [] e2 in
-      Let (list, exp2)
-    )
+          | Valtuple (e1, ylist)::ds ->
+              let check = List.exists (fun y -> y=x) ylist in
+              if check then
+                buildValid [] (vList@[Valtuple (subst (e', x) e1, ylist)]@ds) ve2
+              else
+                let fv = List.filter (fun y -> (member y (free_vars e'))) ylist in 
+                let rec replace free (repNList, repRemaining) : (name list * exp) = match free with
+                  | [] -> (repNList, repRemaining)
+                  | x::xs -> 
+                      let new_var = fresh_var x in
+                      let newNameList = 
+                        List.map (fun n -> if n=x then new_var else n) repNList in
+                      let newRemaining = subst (Var new_var, x) repRemaining in
+                      replace xs (newNameList, newRemaining)
+                in
+                let (repNames, Let (repDecs, repE2)) = replace fv (ylist, Let(ds, e2)) in
+                buildValid repDecs (vList@[Valtuple (subst (e', x) e1, repNames)]) repE2
+        in 
+        let (list, exp2) = buildValid d [] e2 in 
+        Let (list, exp2) )
   | Apply (e1, e2) -> Apply (subst (e', x) e1, subst (e', x) e2)
   | Fn (y, t, e1) -> 
       if (y=x) then e
@@ -402,21 +414,87 @@ let eval_tests : (exp * exp) list = [
             Primop (And,
                     [Primop (Equals, [Primop (Plus, [Int 4; Int 5]); Int 10]);
                      Primop (Equals, [Int 3; Int 3])])]), Bool false); (*17*)
+                                                                       
   (Primop (Or,
            [Primop (Or,
                     [Primop (Equals, [Int 5; Int 4]);
                      Primop (Equals, [Primop (Plus, [Int 3; Int 3]); Int 6])]);
             Primop (Plus, [Int 5; Int 5])]), Bool true); (*18*)
+                                                         
   (Fn
      ("y", None, Primop (Plus, [Var "y"; Primop (Times, [Var "x"; Int 2])])), 
    Fn
      ("y", None, Primop (Plus, [Var "y"; Primop (Times, [Var "x"; Int 2])]))); (*16 no apply*)
+                                                                               
   (Apply
      (Fn
         ("y", None, Primop (Plus, [Var "y"; Primop (Times, [Int 6; Int 2])])),
       Int 3), Int 15); (*16*)
-  (Apply (Int 5, Int 6), "First expression should be a function"); (*Apply error*)
-                                                                               
+                       
+  (Apply (Int 5, Int 6), Int 0); (*Apply error*)
+                                 
+  (Let
+     ([Val
+         (Rec ("apply", TArrow (TArrow (TInt, TInt), TArrow (TInt, TInt)),
+               Fn
+                 ("f", Some (TArrow (TInt, TInt)),
+                  Fn ("x", Some TInt, Apply (Var "f", Var "x")))),
+          "apply")],
+      Apply
+        (Apply (Var "apply", Fn ("x", None, Primop (Times, [Var "x"; Int 3]))),
+         Int 100)), Int 300); (*1*)
+                              
+  (Let
+     ([Val
+         (Rec ("fact", TArrow (TInt, TInt),
+               Fn
+                 ("x", Some TInt,
+                  If (Primop (Equals, [Var "x"; Int 0]), Int 1,
+                      Primop (Times,
+                              [Var "x"; Apply (Var "fact", Primop (Minus, [Var "x"; Int 1]))])))),
+          "fact")],
+      Apply (Var "fact", Int 5)), Int 120 ); (*3*)     
+                                             
+  (Let ([Val (Bool true, "x")],
+        Let ([Val (Int 1, "x")], Primop (Plus, [Var "x"; Int 5]))), Int 6 ); (*6*)
+                                                                             
+  (Let ([ByName (Int 3, "x")], Primop (Plus, [Var "x"; Int 1])), 
+   Int 4); (*7*)
+                                   
+  (Let
+     ([Valtuple
+         (Tuple [Primop (Plus, [Int 2; Int 1]); Primop (Times, [Int 2; Int 50])],
+          ["x"; "y"])],
+      Primop (Times, [Primop (Times, [Var "x"; Var "x"]); Var "y"])), Int 900); (*8*)
+                                                                                
+  (Let
+     ([Val
+         (Rec ("repeat",
+               TArrow (TInt, TArrow (TArrow (TInt, TInt), TArrow (TInt, TInt))),
+               Fn
+                 ("n", Some TInt,
+                  Fn
+                    ("f", Some (TArrow (TInt, TInt)),
+                     Fn
+                       ("x", Some TInt,
+                        If (Primop (Equals, [Var "n"; Int 0]), Var "x",
+                            Apply
+                              (Apply
+                                 (Apply (Var "repeat", Primop (Minus, [Var "n"; Int 1])),
+                                  Var "f"),
+                               Apply (Var "f", Var "x"))))))),
+          "repeat")],
+      Apply
+        (Apply (Apply (Var "repeat", Int 4),
+                Fn ("z", Some TInt, Primop (Times, [Var "z"; Int 2]))),
+         Int 100)), Int 1600); (*9*)
+                               
+  (Let
+     ([Val
+         (Let ([Val (Int 10, "ten")],
+               Anno (Fn ("y", None, Var "ten"), TArrow (TInt, TInt))),
+          "f")],
+      Apply (Var "f", Int 55)), Int 10); (*10*)
 ]
 
 (* Q4  : Evaluate an expression in big-step *)
@@ -451,7 +529,7 @@ let rec eval : exp -> exp =
           (match eval e1 with 
            | Fn (x, t, fnexp) -> eval (subst (eval e2, x) fnexp)
            | _ -> stuck "First expression should be a function")
-      | Rec (f, t, e) -> raise NotImplemented
+      | Rec (f, t, e1) -> eval (subst (e, f) e1)
 
       | Primop (And, es) ->
           (let vs = List.map eval es in
@@ -480,7 +558,19 @@ let rec eval : exp -> exp =
             | Some v -> v
           end
 
-      | Let (ds, e) -> raise NotImplemented
+      | Let (d, e) -> (match d with
+          | [] -> eval e
+          | Val (e1, x)::ds -> eval (subst (eval e1, x) (Let (ds, e)))
+          | ByName (e1, x)::ds -> eval (subst (e1, x) (Let (ds, e)))
+          | Valtuple (e1, xlist)::ds -> 
+              let Tuple vs = eval e1 in
+              if List.length xlist = List.length vs then
+                let rec subAll varList valList updatedExp = match (varList, valList) with
+                  | ([], []) -> updatedExp
+                  | (x::xs, v::vs) -> subAll xs vs (subst (v, x) updatedExp)
+                in eval (subAll xlist vs (Let (ds, e)))
+              else stuck "Tuple size must be the same"
+        )
     in
   (* do not change the code from here *)
     decr bigstep_depth;
@@ -499,7 +589,64 @@ let infer_tests : ((context * exp) * typ) list = [
 (* Q5  : Type an expression *)
 (* Q7* : Implement the argument type inference
          For this question, move this function below the "unify". *)
-let infer (ctx : context) (e : exp) : typ = raise NotImplemented
+let rec infer (ctx : context) (e : exp) : typ = match e with
+  | Int _ -> TInt
+  | Bool _ -> TBool
+  | Tuple es -> TProduct (List.map (infer ctx) es)
+  | If (e1, e2, e3) ->
+      (match infer ctx e1 with
+       | TBool -> let (t1, t2) = (infer ctx e2, infer ctx e3) in
+           if t1 = t2 then
+             t1
+           else
+             type_fail "Both expressions must have same type"
+       | t -> type_fail ("Condition for if expression should be of the type bool,
+      but type " ^ Print.typ_to_string t ^ " was infered") )
+  | Anno (e, t) -> t
+  | Var x -> type_fail ("Free variable \"" ^ x ^ "\" during evaluation")
+
+  | Fn (x, t, e1) -> (match t with 
+      | Some ty -> TArrow (ty, infer (extend ctx (x, ty)) e1)
+      | _ -> type_fail "No type for function input")
+    
+                      
+  | Apply (e1, e2) -> 
+      (match infer ctx e1 with 
+       | TArrow (tau, tau') -> 
+           let typE2 = infer ctx e2 in
+           if typE2 = tau then tau'
+           else type_fail ("Infered type of second expression was " ^ Print.typ_to_string typE2 ^ 
+                           " but was expecting " ^ Print.typ_to_string tau ^ " in order to apply to function")
+                                                                                                  
+       | t -> type_fail ("First expression should be a function, 
+                but type " ^ Print.typ_to_string t ^ " was infered"))
+  | Rec (f, t, e1) -> t
+
+  | Primop (Negate, es) -> (
+      if es = e::[] then match infer ctx e with 
+        | TInt -> TInt
+        | t -> type_fail ("Expression type was infered to be " ^ Print.typ_to_string t ^ 
+                          " but was expecting an int")    
+      else type_fail "Negate only works on one integer at a time") 
+  | Primop (And, es) | Primop (Or, es) ->
+      (let typList = List.map (infer ctx) es in
+       if List.for_all (fun t -> t=TBool) typList then TBool
+       else type_fail "All expressions must be booleans" ) 
+  | Primop (Plus, es) | Primop (Minus, es) | Primop (Times, es) | Primop (Div, es) ->
+      (let typList = List.map (infer ctx) es in
+       if List.for_all (fun t -> t=TInt) typList then TInt
+       else type_fail "All expressions must be integers" ) 
+  | Primop (op, es) -> 
+      (let typList = List.map (infer ctx) es in
+       if List.for_all (fun t -> t=TInt) typList then TBool
+       else type_fail "All expressions must be integers" )
+
+  | Let (d, e) -> (match d with
+      | [] -> 
+      | Val (e1, x)::ds ->
+      | ByName (e1, x)::ds ->
+      | Valtuple (e1, xlist)::ds -> 
+    ) 
 
 
 let unify_tests : ((typ * typ) * unit) list = [
