@@ -30,7 +30,13 @@ let program_15 =
 end end end; " ;;
 
 let program_16 = 
-  "(fn y => y + x * 2) x;"
+  "(fn y => y + x * 2) x;" ;;
+    
+let program_17 =
+  "(3=3)&&(4+5=9)&&(3+3);";;
+
+let program_18 =
+  "(5=4)||(3+3=7)||(5+5);";;
 
 (* Q0  : Get familiar with the external syntax of MiniML *)
 let parse_tests : (string * (string, exp) either) list = [
@@ -391,6 +397,26 @@ let rec subst ((e', x) : exp * name) (e : exp) : exp = match e with
 
 
 let eval_tests : (exp * exp) list = [
+  (Primop (And,
+           [Primop (Equals, [Int 3; Int 3]);
+            Primop (And,
+                    [Primop (Equals, [Primop (Plus, [Int 4; Int 5]); Int 10]);
+                     Primop (Equals, [Int 3; Int 3])])]), Bool false); (*17*)
+  (Primop (Or,
+           [Primop (Or,
+                    [Primop (Equals, [Int 5; Int 4]);
+                     Primop (Equals, [Primop (Plus, [Int 3; Int 3]); Int 6])]);
+            Primop (Plus, [Int 5; Int 5])]), Bool true); (*18*)
+  (Fn
+     ("y", None, Primop (Plus, [Var "y"; Primop (Times, [Var "x"; Int 2])])), 
+   Fn
+     ("y", None, Primop (Plus, [Var "y"; Primop (Times, [Var "x"; Int 2])]))); (*16 no apply*)
+  (Apply
+     (Fn
+        ("y", None, Primop (Plus, [Var "y"; Primop (Times, [Int 6; Int 2])])),
+      Int 3), Int 15); (*16*)
+  (Apply (Int 5, Int 6), "First expression should be a function"); (*Apply error*)
+                                                                               
 ]
 
 (* Q4  : Evaluate an expression in big-step *)
@@ -420,14 +446,33 @@ let rec eval : exp -> exp =
       | Anno (e, _) -> eval e     (* types are ignored in evaluation *)
       | Var x -> stuck ("Free variable \"" ^ x ^ "\" during evaluation")
 
-      | Fn (x, t, e) -> raise NotImplemented
-      | Apply (e1, e2) -> raise NotImplemented
+      | Fn (x, t, e1) -> e
+      | Apply (e1, e2) -> 
+          (match eval e1 with 
+           | Fn (x, t, fnexp) -> eval (subst (eval e2, x) fnexp)
+           | _ -> stuck "First expression should be a function")
       | Rec (f, t, e) -> raise NotImplemented
 
       | Primop (And, es) ->
-          raise NotImplemented
+          (let vs = List.map eval es in
+           if (List.length vs) < 2 then stuck "Need at least 2 arguments for And operations"
+           else
+             let rec checkAll values = match values with
+               | v::[] -> v 
+               | Bool true::vs -> checkAll vs
+               | Bool false::vs -> Bool false
+               | _ -> stuck "Bad arguments for And operations"
+             in checkAll vs)
       | Primop (Or, es) ->
-          raise NotImplemented
+          (let vs = List.map eval es in
+           if (List.length vs) < 2 then stuck "Need at least 2 arguments for Or operations"
+           else
+             let rec checkAll values = match values with
+               | v::[] -> v 
+               | Bool true::vs -> Bool true
+               | Bool false::vs -> checkAll vs
+               | _ -> stuck "Bad arguments for Or operations"
+             in checkAll vs)
       | Primop (op, es) ->
           let vs = List.map eval es in
           begin match eval_op op vs with
