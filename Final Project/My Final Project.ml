@@ -1,4 +1,9 @@
 (*My own helper functions*) 
+let rec unfold (a: (typ option) ref)  = match !a with
+  | None | Some TInt | Some TBool | Some TProduct _ 
+  | Some TArrow _ -> a
+  | Some TVar t -> unfold t
+    
 let program_11 = 
   "let name x = y in 
      x + 1 + z end; " ;;
@@ -582,8 +587,74 @@ let rec eval : exp -> exp =
   (* to here *)
     result
 
-
+let emptyCtx = Ctx [] 
 let infer_tests : ((context * exp) * typ) list = [
+  ((emptyCtx, 
+    Let
+      ([Val
+          (Rec ("apply", TArrow (TArrow (TInt, TInt), TArrow (TInt, TInt)),
+                Fn
+                  ("f", Some (TArrow (TInt, TInt)),
+                   Fn ("x", Some TInt, Apply (Var "f", Var "x")))),
+           "apply")],
+       Apply
+         (Apply (Var "apply", Fn ("x", Some TInt, Primop (Times, [Var "x"; Int 3]))),
+          Int 100))), TInt); (*1*) 
+                             
+  ((emptyCtx, 
+    Primop (Plus, [Primop (Times, [Int 10; Int 10]); Int 33])), TInt); (*2*) 
+                                                                       
+  ((emptyCtx, 
+    Let
+      ([Val
+          (Rec ("fact", TArrow (TInt, TInt),
+                Fn
+                  ("x", Some TInt,
+                   If (Primop (Equals, [Var "x"; Int 0]), Int 1,
+                       Primop (Times,
+                               [Var "x"; Apply (Var "fact", Primop (Minus, [Var "x"; Int 1]))])))),
+           "fact")],
+       Apply (Var "fact", Int 5))), TInt); (*3*)
+                                           
+  ((emptyCtx, 
+    If (Bool true, Int 3, Int 5)), TInt); (*basic if*) 
+                                      
+  ((emptyCtx, 
+    Let ([Val (Int 1, "x")], Primop (Plus, [Var "x"; Int 5]))), TInt); (*5*) 
+                                                                       
+  ((emptyCtx, 
+    Let ([Val (Bool true, "x")],
+         Let ([Val (Int 1, "x")], Primop (Plus, [Var "x"; Int 5])))), TInt); (*6*) 
+                                                                             
+  ((emptyCtx, 
+    Let
+      ([Valtuple
+          (Tuple [Primop (Plus, [Int 2; Int 1]); Primop (Times, [Int 2; Int 50])],
+           ["x"; "y"])],
+       Primop (Times, [Primop (Times, [Var "x"; Var "x"]); Var "y"]))), TInt); (*8*)
+                                                                               
+  ((emptyCtx, 
+    Let
+      ([Val
+          (Rec ("repeat",
+                TArrow (TInt, TArrow (TArrow (TInt, TInt), TArrow (TInt, TInt))),
+                Fn
+                  ("n", Some TInt,
+                   Fn
+                     ("f", Some (TArrow (TInt, TInt)),
+                      Fn
+                        ("x", Some TInt,
+                         If (Primop (Equals, [Var "n"; Int 0]), Var "x",
+                             Apply
+                               (Apply
+                                  (Apply (Var "repeat", Primop (Minus, [Var "n"; Int 1])),
+                                   Var "f"),
+                                Apply (Var "f", Var "x"))))))),
+           "repeat")],
+       Apply
+         (Apply (Apply (Var "repeat", Int 4),
+                 Fn ("z", Some TInt, Primop (Times, [Var "z"; Int 2]))),
+          Int 100))), TInt); (*9*)
 ]
 
 (* Q5  : Type an expression *)
@@ -600,15 +671,14 @@ let rec infer (ctx : context) (e : exp) : typ = match e with
              t1
            else
              type_fail "Both expressions must have same type"
-       | t -> type_fail ("Condition for if expression should be of the type bool,
-      but type " ^ Print.typ_to_string t ^ " was infered") )
+       | t -> type_fail ("Condition for if expression should be of the type bool, but type " 
+                         ^ Print.typ_to_string t ^ " was infered") )
   | Anno (e, t) -> t
-  | Var x -> type_fail ("Free variable \"" ^ x ^ "\" during evaluation")
+  | Var x -> ctx_lookup ctx x
 
   | Fn (x, t, e1) -> (match t with 
       | Some ty -> TArrow (ty, infer (extend ctx (x, ty)) e1)
-      | _ -> type_fail "No type for function input")
-    
+      | _ -> type_fail "No type for function input") 
                       
   | Apply (e1, e2) -> 
       (match infer ctx e1 with 
@@ -618,8 +688,8 @@ let rec infer (ctx : context) (e : exp) : typ = match e with
            else type_fail ("Infered type of second expression was " ^ Print.typ_to_string typE2 ^ 
                            " but was expecting " ^ Print.typ_to_string tau ^ " in order to apply to function")
                                                                                                   
-       | t -> type_fail ("First expression should be a function, 
-                but type " ^ Print.typ_to_string t ^ " was infered"))
+       | t -> type_fail ("First expression should be a function, but type " 
+                         ^ Print.typ_to_string t ^ " was infered"))
   | Rec (f, t, e1) -> t
 
   | Primop (Negate, es) -> (
@@ -631,22 +701,33 @@ let rec infer (ctx : context) (e : exp) : typ = match e with
   | Primop (And, es) | Primop (Or, es) ->
       (let typList = List.map (infer ctx) es in
        if List.for_all (fun t -> t=TBool) typList then TBool
-       else type_fail "All expressions must be booleans" ) 
+       else type_fail "All expressions must be booleans in order to execute this primative operation" ) 
   | Primop (Plus, es) | Primop (Minus, es) | Primop (Times, es) | Primop (Div, es) ->
       (let typList = List.map (infer ctx) es in
        if List.for_all (fun t -> t=TInt) typList then TInt
-       else type_fail "All expressions must be integers" ) 
+       else type_fail "All expressions must be integers in order to execute this primative operation" ) 
   | Primop (op, es) -> 
       (let typList = List.map (infer ctx) es in
        if List.for_all (fun t -> t=TInt) typList then TBool
-       else type_fail "All expressions must be integers" )
+       else type_fail "All expressions must be integers in order to exeute this primative operation" )
 
-  | Let (d, e) -> (match d with
-      | [] -> 
-      | Val (e1, x)::ds ->
-      | ByName (e1, x)::ds ->
-      | Valtuple (e1, xlist)::ds -> 
-    ) 
+  | Let (d, e) -> (
+      let rec buildList d accList = match d with
+        | [] -> accList
+        | Val (e1, x)::ds | ByName (e1, x)::ds -> 
+            buildList ds ((x, (infer (extend_list ctx accList) e1))::accList) 
+        | Valtuple (e1, xlist)::ds -> 
+            (match (infer (extend_list ctx accList) e1) with 
+             | TProduct typs ->
+                 if List.length typs = List.length xlist then 
+                   let rec buildSubList names tys list = match (names, tys) with
+                     | [], [] -> list
+                     | n::ns, t::ts -> buildSubList ns ts ((n, t)::list)
+                   in buildList ds ((buildSubList xlist typs [])@accList)
+                 else type_fail "Found a tuple declaration that does not match in size" 
+             | t -> type_fail ("Expression for tuple should have type TProduct, but type "
+                               ^ Print.typ_to_string t ^ " was infered"))
+      in infer (extend_list ctx (buildList d [])) e )
 
 
 let unify_tests : ((typ * typ) * unit) list = [
@@ -654,7 +735,32 @@ let unify_tests : ((typ * typ) * unit) list = [
 
 (* find the next function for Q5 *)
 (* Q6  : Unify two types *)
-let unify (ty1 : typ) (ty2 : typ) : unit = raise NotImplemented
+let rec unify (ty1 : typ) (ty2 : typ) : unit = match (ty1, ty2) with
+  | TInt, TInt | TBool, TBool -> ()
+  | TVar a, TVar b -> 
+      (match (!a, !b) with
+       | None, None -> 
+           if a==b then ()
+           else (b:= Some (TVar a))(*make b point to a cell*)
+       | Some t, None -> 
+           (*check to see if, anywhere in t, there is a typ ref
+           that points to the same location as b;
+           if yes, fail; else succeed*) 
+           (match t with 
+            | TInt -> b := Some TInt
+            | TBool -> b:= Some TBool
+            | TVar t' -> 
+                
+            | TArrow (t1', t2') -> 
+                
+            | TProduct tlist -> 
+                
+           )
+                           
+       | None, Some t -> ()
+           
+       | _, _ -> ()
+      )
 
 
 (* Now you can play with the language that you've implemented! *)
