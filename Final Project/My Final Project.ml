@@ -733,13 +733,27 @@ let rec infer (ctx : context) (e : exp) : typ = match e with
 let unify_tests : ((typ * typ) * unit) list = [
 ]
 
+let find (a: typ option ref) (typ2: typ) : unit = 
+  let a = (unfold a) in
+  let rec find' ty2 succeed fail  = match ty2 with
+    | TVar b -> if a == (unfold b) then fail ()
+        else succeed ()
+    | TArrow (t1, t2) -> (try ((find' t1 succeed fail), (find' t2 succeed fail)); succeed () with
+        | stuck -> fail ())
+    | TProduct tList -> (try List.map (fun t -> find' t succeed fail) tList; succeed () with
+        | stuck -> fail ())
+    | _ -> succeed ()
+  in find' typ2 (fun () -> ()) (fun () -> stuck "")
+           
+
 (* find the next function for Q5 *)
 (* Q6  : Unify two types *)
 let rec unify (ty1 : typ) (ty2 : typ) : unit = match (ty1, ty2) with
   | TInt, TInt | TBool, TBool -> ()
+  | TInt, TBool | TBool, TInt -> type_fail "One is of type int, the other of type bool"
   | TVar a, TVar b -> 
       (match (!a, !b) with
-       | None, None -> 
+       | None, None ->  
            if a==b then ()
            else (b:= Some (TVar a))(*make b point to a cell*)
        | Some t, None -> 
@@ -748,19 +762,49 @@ let rec unify (ty1 : typ) (ty2 : typ) : unit = match (ty1, ty2) with
            if yes, fail; else succeed*) 
            (match t with 
             | TInt -> b := Some TInt
-            | TBool -> b:= Some TBool
-            | TVar t' -> 
+            | TBool -> b:= Some TBool 
+            | TVar t' -> b := Some t
                 
             | TArrow (t1', t2') -> 
+                (try find b t; b:= Some t with
+                 | stuck -> type_fail "Cannot unify because ty2 is a part of the free variables in ty1, which is a TArrow" )                
                 
             | TProduct tlist -> 
-                
+                (try find b t; b:= Some t with
+                 | stuck -> type_fail "Cannot unify because ty2 is a part of the free variables in ty1, which is a TProduct" )
            )
                            
-       | None, Some t -> ()
-           
-       | _, _ -> ()
-      )
+       | None, Some t -> 
+           (match t with 
+            | TInt -> a := Some TInt
+            | TBool -> a := Some TBool 
+            | TVar t' -> a := Some t
+                
+            | TArrow (t1', t2') -> 
+                (try find a t; a := Some t with
+                 | stuck -> type_fail "Cannot unify because ty1 is a part of the free variables in ty2, which is a TArrow" )                
+                
+            | TProduct tlist -> 
+                (try find a t; a := Some t with
+                 | stuck -> type_fail "Cannot unify because ty1 is a part of the free variables in ty2, which is a TProduct" )
+           )
+       | Some ta, Some tb -> unify ta tb )
+      
+  | TVar a, _ ->  (try find a ty2; a := Some ty2 with
+      | stuck -> type_fail "Cannot unify because ty1 is a part of the free variables in ty2" )
+  | _, TVar b -> (try find b ty1; b := Some ty1 with
+      | stuck -> type_fail "Cannot unify because ty2 is a part of the free variables in ty1" )
+  | TArrow (t1a, t2a), TArrow (t1b, t2b) -> 
+      unify t1a t1b; unify t2a t2b 
+  | TArrow _, _ | _, TArrow _ -> type_fail "One is of type TArrow, but the other isn't" 
+  | TProduct tlist1, TProduct tlist2 -> 
+      if List.length tlist1 = List.length tlist2 then
+        let rec unifyAll list1 list2 = match (list1, list2) with
+          | t1::[], t2::[] -> unify t1 t2
+          | t1::ts1, t2::ts2 -> unify t1 t2; unifyAll ts1 ts2
+        in unifyAll tlist1 tlist2
+      else type_fail "TProducts are not of the same size"
+  | TProduct _, _ | _, TProduct _ -> type_fail "One is of type TProduct, but the other isnt'"
 
 
 (* Now you can play with the language that you've implemented! *)
